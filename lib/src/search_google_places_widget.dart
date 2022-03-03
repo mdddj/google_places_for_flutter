@@ -16,10 +16,13 @@ class SearchGooglePlacesWidget extends StatefulWidget {
     this.strictBounds = false,
     this.placeType,
     this.darkMode = false,
+    this.apiSearchUrl,
     this.key,
   })  : assert((location == null && radius == null) ||
             (location != null && radius != null)),
         super(key: key);
+
+  final String? apiSearchUrl;
 
   final Key? key;
 
@@ -317,6 +320,10 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
       }
     }
 
+    if (widget.apiSearchUrl != null) {
+      url = widget.apiSearchUrl!;
+      url += '?input=$input';
+    }
     final response = await http.get(Uri.parse(url));
     final json = JSON.jsonDecode(response.body);
 
