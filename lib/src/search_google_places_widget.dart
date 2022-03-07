@@ -295,6 +295,9 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
         if(predictions==null){
           return;
         }
+        if(!mounted){
+          return;
+        }
         await _animationController.animateTo(0.5);
         setState(() => _placePredictions = predictions);
         await _animationController.forward();
