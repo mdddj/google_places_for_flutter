@@ -4,9 +4,9 @@ class Geolocation {
   Geolocation(this._coordinates, this._bounds);
 
   Geolocation.fromJSON(geolocationJSON) {
-    this._coordinates = geolocationJSON["results"][0]["geometry"]["location"];
-    this._bounds = geolocationJSON["results"][0]["geometry"]["viewport"];
-    this.fullJSON = geolocationJSON["results"][0];
+    this._coordinates = geolocationJSON["geometry"]["location"];
+    this._bounds = geolocationJSON["geometry"]["viewport"];
+    this.fullJSON = geolocationJSON;
   }
 
   /// Property that holds the JSON response that contains the location of the place.

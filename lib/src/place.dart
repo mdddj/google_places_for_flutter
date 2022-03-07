@@ -54,9 +54,9 @@ class Place {
   /// Fetches the Geolocation API from Google Maps to get more information about the place, including coordinates, bounds, etc.
   ///
   /// Learn more at [Geolocation docs](https://developers.google.com/maps/documentation/geolocation/intro)
-  Future<Geolocation?>? get geolocation async {
+  Future<Geolocation?> getGeolocation(String apiHost,{MarkHttpHeader? headers}) async {
     if (this._geolocation == null) {
-      this._geolocation = await _geocode!.getGeolocation(description!);
+      this._geolocation = await _geocode!.getGeolocation(description!,apiHost,headers: headers);
       return _geolocation;
     }
     return _geolocation;

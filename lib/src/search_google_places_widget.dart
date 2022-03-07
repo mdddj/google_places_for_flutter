@@ -1,15 +1,14 @@
 part of google_places_for_flutter;
-
+typedef MarkHttpHeader = Map<String,String> Function();
 class SearchGooglePlacesWidget extends StatefulWidget {
   SearchGooglePlacesWidget({
-    @required this.apiKey,
+    this.apiKey,
     this.placeholder = 'Search',
     this.icon = Icons.search,
     this.hasClearButton = true,
     this.clearIcon = Icons.clear,
     this.iconColor = Colors.blue,
     required this.onSelected,
-    required this.onSearch,
     this.language = 'en',
     this.location,
     this.radius,
@@ -17,6 +16,8 @@ class SearchGooglePlacesWidget extends StatefulWidget {
     this.placeType,
     this.darkMode = false,
     this.apiSearchUrl,
+    this.headers,
+    this.searchError,
     this.key,
   })  : assert((location == null && radius == null) ||
             (location != null && radius != null)),
@@ -26,6 +27,9 @@ class SearchGooglePlacesWidget extends StatefulWidget {
 
   final Key? key;
 
+  final ValueChanged<dynamic>? searchError;
+
+  final MarkHttpHeader? headers;
   /// API Key of the Google Maps API.
   final String? apiKey;
 
@@ -34,9 +38,6 @@ class SearchGooglePlacesWidget extends StatefulWidget {
 
   /// The callback that is called when one Place is selected by the user.
   final void Function(Place place) onSelected;
-
-  /// The callback that is called when the user taps on the search icon.
-  final void Function(Place place) onSearch;
 
   /// Language used for the autocompletion.
   ///
@@ -83,7 +84,7 @@ class SearchGooglePlacesWidget extends StatefulWidget {
 class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
     with TickerProviderStateMixin {
   TextEditingController _textEditingController = TextEditingController();
-  AnimationController? _animationController;
+  late AnimationController _animationController;
   // SearchContainer height.
   Animation? _containerHeight;
   // Place options opacity.
@@ -108,7 +109,7 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
     _containerHeight = Tween<double>(begin: 55, end: 364).animate(
       CurvedAnimation(
         curve: Interval(0.0, 0.5, curve: Curves.easeInOut),
-        parent: _animationController!,
+        parent: _animationController,
       ),
     );
     _listOpacity = Tween<double>(
@@ -117,7 +118,7 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
     ).animate(
       CurvedAnimation(
         curve: Interval(0.5, 1.0, curve: Curves.easeInOut),
-        parent: _animationController!,
+        parent: _animationController,
       ),
     );
 
@@ -150,7 +151,7 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
   */
   Widget _searchContainer({Widget? child}) {
     return AnimatedBuilder(
-        animation: _animationController!,
+        animation: _animationController,
         builder: (context, _) {
           return Container(
             height: _containerHeight!.value,
@@ -290,9 +291,13 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
 
       if (_currentInput == _tempInput) {
         final predictions = await _makeRequest(_currentInput);
-        await _animationController!.animateTo(0.5);
+        print(predictions);
+        if(predictions==null){
+          return;
+        }
+        await _animationController.animateTo(0.5);
         setState(() => _placePredictions = predictions);
-        await _animationController!.forward();
+        await _animationController.forward();
 
         _textEditingController.addListener(_autocompletePlace);
         return;
@@ -307,8 +312,9 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
 
   /// API request function. Returns the Predictions
   Future<dynamic> _makeRequest(input) async {
-    String url =
-        "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$input&key=${widget.apiKey}&language=${widget.language}";
+    try {
+      String url =
+        "${widget.apiSearchUrl!=null ?  '${widget.apiSearchUrl!}' : 'https://maps.googleapis.com/maps/api/place/autocomplete/json'}/auto?input=$input&language=${widget.language}";
     if (widget.location != null && widget.radius != null) {
       url +=
           "&location=${widget.location!.latitude},${widget.location!.longitude}&radius=${widget.radius}";
@@ -320,22 +326,29 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
       }
     }
 
-    if (widget.apiSearchUrl != null) {
-      url = widget.apiSearchUrl!;
-      url += '?input=$input';
-    }
-    final response = await http.get(Uri.parse(url));
+    // if (widget.apiSearchUrl != null) {
+    //   url = widget.apiSearchUrl!;
+    //   url += '?input=$input';
+    // }
+    final response = await http.get(Uri.parse(url),headers: widget.headers?.call() );
+  
     final json = JSON.jsonDecode(response.body);
+    print(json);
 
-    if (json["error_message"] != null) {
-      var error = json["error_message"];
-      if (error == "This API project is not authorized to use this API.")
-        error +=
-            " Make sure the Places API is activated on your Google Cloud Platform";
-      throw Exception(error);
+    if (json is Map<String,dynamic>) {
+      var error = json["message"];
+      // if (error == "This API project is not authorized to use this API.")
+      //   error +=
+      //       " Make sure the Places API is activated on your Google Cloud Platform";
+      widget.searchError?.call(error);
     } else {
-      final predictions = json["predictions"];
+      final predictions = json;
       return predictions;
+    }
+    } catch (e,s) {
+      print(s);
+      print(s);
+      widget.searchError?.call(e);
     }
   }
 
@@ -361,28 +374,34 @@ class _SearchMapPlaceWidgetState extends State<SearchGooglePlacesWidget>
 
   /// Closes the expanded search box with predictions
   void _closeSearch() async {
-    if (!_animationController!.isDismissed)
-      await _animationController!.animateTo(0.5);
+    if (!_animationController.isDismissed)
+      await _animationController.animateTo(0.5);
     _fn.unfocus();
     setState(() {
       _placePredictions = [];
       _isEditing = false;
     });
-    _animationController!.reverse();
+    _animationController.reverse();
     _textEditingController.addListener(_autocompletePlace);
   }
 
   /// Will listen for input changes every 0.5 seconds, allowing us to make API requests only when the user stops typing.
   void customListener() {
     Future.delayed(Duration(milliseconds: 500), () {
-      setState(() => _tempInput = _textEditingController.text);
+      if(mounted){
+setState(() => _tempInput = _textEditingController.text);
       customListener();
+      }
+      
     });
   }
 
   @override
   void dispose() {
-    _animationController!.dispose();
+    if(mounted){
+   _animationController.dispose();
+    }
+ 
     _textEditingController.dispose();
     _fn.dispose();
     super.dispose();

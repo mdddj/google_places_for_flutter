@@ -46,16 +46,15 @@ class _MyHomePageState extends State<MyHomePage> {
             // The position used to give better recommendations. In this case we are using the user position
             radius: 30000,
             onSelected: (Place place) async {
-              final geolocation = await place.geolocation;
+              // final geolocation = await place.geolocation;
 
               // Will animate the GoogleMap camera, taking us to the selected position with an appropriate zoom
               final GoogleMapController controller = await _controller.future;
-              controller.animateCamera(
-                  CameraUpdate.newLatLng(geolocation!.coordinates));
-              controller.animateCamera(
-                  CameraUpdate.newLatLngBounds(geolocation.bounds, 0));
+              // controller.animateCamera(
+              //     CameraUpdate.newLatLng(geolocation.coordinates('')));
+              // controller.animateCamera(
+              //     CameraUpdate.newLatLngBounds(geolocation.bounds, 0));
             },
-            onSearch: (Place place) {},
           ),
         ),
       ),
